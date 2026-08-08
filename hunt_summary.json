@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-08-08T05:28:29.100882",
+  "scanner_version": "6.0",
+  "stats": {
+    "scanned": 1,
+    "alive": 0,
+    "vulnerable": 0,
+    "cracked": 0,
+    "web_cracked": 0,
+    "config_harvested": 0,
+    "post_exploit_success": 0,
+    "errors": 1,
+    "start_time": 1786166887.2270608,
+    "elapsed_seconds": 21.873676538467407
+  },
+  "total_scanned": 1,
+  "alive_hosts": 0,
+  "vulnerable_hosts": [],
+  "cracked_hosts": [],
+  "config_harvested": [],
+  "post_exploit": [],
+  "os_breakdown": {},
+  "session_id": "20260808_052807"
+}

@@ -501,11 +501,11 @@ class AggressiveWordlistGenerator:
 class SQLiteStore:
     def __init__(self, db_path: str = "vps_hunter.db"):
         self.db_path = db_path
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self._init_db()
 
     def _init_db(self):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
+        c = self.conn.cursor()
         c.execute("""
             CREATE TABLE IF NOT EXISTS results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -529,12 +529,16 @@ class SQLiteStore:
             )
         """)
         c.execute("CREATE INDEX IF NOT EXISTS idx_results_session ON results(session_id)")
-        conn.commit()
-        conn.close()
+        self.conn.commit()
+
+    def close(self):
+        try:
+            self.conn.close()
+        except Exception:
+            pass
 
     def save_result(self, result: ScanResult, session_id: str):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
+        c = self.conn.cursor()
         c.execute("""
             INSERT INTO results
             (ip, port, alive, os_guess, os_confidence, banner, vulns, ssh_cracked,
@@ -554,32 +558,25 @@ class SQLiteStore:
             int(result.tls_valid) if result.tls_valid is not None else None,
             result.scan_time, session_id
         ))
-        conn.commit()
-        conn.close()
+        self.conn.commit()
 
     def is_scanned(self, ip: str, port: int) -> bool:
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
+        c = self.conn.cursor()
         c.execute("SELECT 1 FROM scanned_ips WHERE ip = ? AND port = ?", (ip, port))
         result = c.fetchone() is not None
-        conn.close()
         return result
 
     def mark_scanned(self, ip: str, port: int):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
+        c = self.conn.cursor()
         c.execute("INSERT OR IGNORE INTO scanned_ips (ip, port, scanned_at) VALUES (?, ?, ?)",
                   (ip, port, datetime.now().isoformat()))
-        conn.commit()
-        conn.close()
+        self.conn.commit()
 
     def get_session_results(self, session_id: str) -> List[Dict]:
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
+        c = self.conn.cursor()
         c.execute("SELECT * FROM results WHERE session_id = ?", (session_id,))
         cols = [d[0] for d in c.description]
         rows = c.fetchall()
-        conn.close()
         results = []
         for row in rows:
             d = dict(zip(cols, row))
@@ -593,23 +590,19 @@ class SQLiteStore:
         return results
 
     def start_session(self, session_id: str, provider: str, region: str, count: int):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
+        c = self.conn.cursor()
         c.execute("""
             INSERT OR REPLACE INTO sessions (session_id, provider, region, target_count, started)
             VALUES (?, ?, ?, ?, ?)
         """, (session_id, provider, region, count, datetime.now().isoformat()))
-        conn.commit()
-        conn.close()
+        self.conn.commit()
 
     def complete_session(self, session_id: str, stats: Dict):
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
+        c = self.conn.cursor()
         c.execute("""
             UPDATE sessions SET completed = ?, stats = ? WHERE session_id = ?
         """, (datetime.now().isoformat(), json.dumps(stats), session_id))
-        conn.commit()
-        conn.close()
+        self.conn.commit()
 
 
 class VPSHunter:
